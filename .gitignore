@@ -1,0 +1,31 @@
+# Entornos virtuales de Python
+.venv/
+venv/
+
+# Cachés y archivos compilados de Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.import_linter_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Empaquetado
+*.egg-info/
+build/
+dist/
+
+# Frontend (Node)
+node_modules/
+frontend/dist/
+
+# Editores y sistema operativo
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Archivos temporales de Word
+~$*.docx
