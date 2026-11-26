@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "compulab"
+version = "0.1.0"
+description = "Núcleo de CompuLabAdmin: administración de los laboratorios de cómputo del TEC."
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+dependencies = []
+
+[project.optional-dependencies]
+# Herramientas de desarrollo, todas de código abierto.
+dev = [
+    "pytest>=8",
+    "import-linter>=2",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+# Contrato de capas: una capa solo puede importar capas que estén debajo de ella.
+# El dominio no importa aplicación ni infraestructura; la aplicación solo depende del dominio.
+[tool.importlinter]
+root_package = "compulab"
+
+[[tool.importlinter.contracts]]
+name = "Regla de capas: infraestructura -> aplicación -> dominio"
+type = "layers"
+layers = [
+    "compulab.infraestructura",
+    "compulab.aplicacion",
+    "compulab.dominio",
+]
