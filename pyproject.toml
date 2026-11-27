@@ -22,6 +22,8 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# Permite importar los módulos de apoyo de tests/ (fábricas y dobles de prueba).
+pythonpath = ["tests"]
 addopts = "-q"
 
 # Contrato de capas: una capa solo puede importar capas que estén debajo de ella.

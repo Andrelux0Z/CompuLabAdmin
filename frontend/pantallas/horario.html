@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Horario semanal · CompuLabAdmin</title>
+  <link rel="stylesheet" href="estilos.css">
+  <style>
+    .calendario { display: grid; grid-template-columns: 52px repeat(7, minmax(90px, 1fr)); overflow-x: auto; }
+    .cab { font-size: 12px; font-weight: 600; color: var(--suave); text-align: center; padding: 6px 0;
+      border-bottom: 1px solid var(--borde); }
+    .horas { position: relative; }
+    .marca-hora { height: 36px; font-size: 11px; color: var(--suave); text-align: right; padding-right: 6px;
+      transform: translateY(-7px); }
+    .columna { position: relative; border-left: 1px solid var(--borde);
+      background: repeating-linear-gradient(to bottom, transparent 0 35px, var(--gris-suave) 35px 36px); }
+    .turno { position: absolute; left: 3px; right: 3px; border-radius: 6px; padding: 4px 6px; font-size: 12px;
+      border-left: 4px solid; overflow: hidden; }
+    .turno.cubierto { background: var(--ok-suave); border-color: var(--ok); }
+    .turno.ofrecido { background: var(--aviso-suave); border-color: var(--aviso); }
+    .turno.sin-asignar, .turno.no-cubierto { background: var(--error-suave); border-color: var(--error); }
+    .turno .quien { font-weight: 600; display: block; }
+    .asistente { margin-bottom: 14px; }
+    .asistente .fila { display: flex; justify-content: space-between; font-size: 14px; }
+    .barra-horas { height: 8px; background: var(--gris-suave); border-radius: 99px; margin-top: 4px; overflow: hidden; }
+    .barra-horas span { display: block; height: 100%; background: var(--primario); }
+    .barra-horas span.lleno { background: var(--aviso); }
+    .pendiente { display: flex; justify-content: space-between; gap: 8px; padding: 8px 0;
+      border-bottom: 1px solid var(--borde); font-size: 14px; }
+    .dos { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    h2 { font-size: 16px; margin: 0 0 10px; }
+    .lateral > .tarjeta + .tarjeta { margin-top: 16px; }
+  </style>
+</head>
+<body>
+  <header class="barra">
+    <a class="marca" href="index.html">CompuLabAdmin</a>
+    <nav><a href="horario.html" aria-current="page">Horario</a><a href="reservar.html">Reservar</a><a href="cierre.html">Cierre de mes</a></nav>
+    <span class="rol">Coordinadora de laboratorio · Laboratorio 1</span>
+  </header>
+  <main>
+    <h1>Horario semanal · Laboratorio 1 (Cartago)</h1>
+    <p class="sub" id="etiqueta-semana"></p>
+    <div class="rejilla-2">
+      <section class="tarjeta" aria-labelledby="t-cal">
+        <h2 id="t-cal">Turnos de la semana</h2>
+        <div class="leyenda" id="leyenda"></div>
+        <div class="calendario" id="calendario" role="grid" aria-label="Turnos por día y hora"></div>
+      </section>
+      <aside class="lateral">
+        <section class="tarjeta" aria-labelledby="t-pend">
+          <h2 id="t-pend">Requiere atención</h2>
+          <div id="pendientes"></div>
+        </section>
+        <section class="tarjeta" aria-labelledby="t-asig">
+          <h2 id="t-asig">Asignar turno</h2>
+          <form id="form-asignar" novalidate>
+            <label for="f-asistente">Asistente</label>
+            <select id="f-asistente"></select>
+            <label for="f-dia">Día</label>
+            <select id="f-dia"></select>
+            <div class="dos">
+              <div><label for="f-inicio">Inicio</label><select id="f-inicio"></select></div>
+              <div><label for="f-fin">Fin</label><select id="f-fin"></select></div>
+            </div>
+            <label style="display:flex;gap:8px;align-items:center;font-weight:400">
+              <input type="checkbox" id="f-acepta" style="width:auto;min-height:0"> El asistente aceptó un bloque fuera de su disponibilidad
+            </label>
+            <div id="f-mensaje" class="mensaje oculto" role="status" aria-live="polite"></div>
+            <button class="boton" style="width:100%;margin-top:12px" type="submit">Asignar turno</button>
+          </form>
+        </section>
+        <section class="tarjeta" aria-labelledby="t-horas">
+          <h2 id="t-horas">Horas programadas vs. tope</h2>
+          <div id="asistentes"></div>
+        </section>
+      </aside>
+    </div>
+  </main>
+  <script src="datos.js"></script>
+  <script>
+    const LAB = "LAB1", PRIMERA = 7, ULTIMA = 21, ALTO = 36;
+    const turnos = DATOS.turnos.map(t => ({ ...t }));
+    const asistente = id => DATOS.asistentes.find(a => a.id === id);
+    const nombreCorto = id => id ? asistente(id).nombre.split(" ")[0] : "Sin asignar";
+    const horasDe = id => turnos.filter(t => t.asistente === id).reduce((s, t) => s + t.fin - t.inicio, 0);
+
+    document.getElementById("etiqueta-semana").textContent = DATOS.semana.etiqueta;
+    document.getElementById("leyenda").innerHTML = Object.entries(ESTADOS)
+      .map(([k, e]) => `<span class="estado ${k}">${e.icono} ${e.texto}</span>`).join("");
+
+    function pintarCalendario() {
+      const cal = document.getElementById("calendario");
+      let html = `<div class="cab"></div>` + DATOS.dias.map(d => `<div class="cab">${d}</div>`).join("");
+      html += `<div class="horas">` + Array.from({ length: ULTIMA - PRIMERA }, (_, i) =>
+        `<div class="marca-hora">${hora(PRIMERA + i)}</div>`).join("") + `</div>`;
+      for (let d = 0; d < 7; d++) {
+        const bloques = turnos.filter(t => t.lab === LAB && t.dia === d).map(t => {
+          const e = ESTADOS[t.estado];
+          return `<div class="turno ${t.estado}" style="top:${(t.inicio - PRIMERA) * ALTO}px;height:${(t.fin - t.inicio) * ALTO - 2}px"
+            aria-label="${DATOS.dias[d]} ${hora(t.inicio)} a ${hora(t.fin)}, ${nombreCorto(t.asistente)}, ${e.texto}">
+            <span class="quien">${nombreCorto(t.asistente)}</span>${hora(t.inicio)}–${hora(t.fin)}<br>${e.icono} ${e.texto}</div>`;
+        }).join("");
+        html += `<div class="columna" style="height:${(ULTIMA - PRIMERA) * ALTO}px">${bloques}</div>`;
+      }
+      cal.innerHTML = html;
+    }
+
+    function pintarPendientes() {
+      const urgentes = turnos.filter(t => t.lab === LAB && ["sin-asignar", "no-cubierto", "ofrecido"].includes(t.estado));
+      document.getElementById("pendientes").innerHTML = urgentes.map(t => {
+        const e = ESTADOS[t.estado];
+        const accion = { "sin-asignar": "Asignar", "no-cubierto": "Laboratorio estuvo cerrado", "ofrecido": "Esperando que alguien lo tome" }[t.estado];
+        return `<div class="pendiente"><div><strong>${DATOS.dias[t.dia]} ${hora(t.inicio)}–${hora(t.fin)}</strong><br>
+          <small>${nombreCorto(t.asistente)} · ${accion}</small></div><span class="estado ${t.estado}">${e.icono} ${e.texto}</span></div>`;
+      }).join("") || `<p class="sub">Todo cubierto esta semana.</p>`;
+    }
+
+    function pintarAsistentes() {
+      document.getElementById("asistentes").innerHTML = DATOS.asistentes.map(a => {
+        const h = horasDe(a.id), pct = Math.min(100, h / a.tope * 100);
+        return `<div class="asistente"><div class="fila"><span>${a.nombre} <small>(cat. ${a.categoria})</small></span>
+          <span><strong>${h}</strong> / ${a.tope} h</span></div>
+          <div class="barra-horas" role="progressbar" aria-valuenow="${h}" aria-valuemax="${a.tope}" aria-label="Horas de ${a.nombre}">
+          <span class="${pct >= 90 ? "lleno" : ""}" style="width:${pct}%"></span></div></div>`;
+      }).join("");
+    }
+
+    // Formulario: mismas reglas que el caso de uso Asignar turno (E2 a E5)
+    const opciones = (sel, items) => sel.innerHTML = items.map(([v, t]) => `<option value="${v}">${t}</option>`).join("");
+    opciones(document.getElementById("f-asistente"), DATOS.asistentes.map(a => [a.id, a.nombre]));
+    opciones(document.getElementById("f-dia"), DATOS.dias.map((d, i) => [i, d]));
+    const horasLista = Array.from({ length: ULTIMA - PRIMERA + 1 }, (_, i) => [PRIMERA + i, hora(PRIMERA + i)]);
+    opciones(document.getElementById("f-inicio"), horasLista.slice(0, -1));
+    opciones(document.getElementById("f-fin"), horasLista.slice(1));
+    document.getElementById("f-dia").value = 3;
+    document.getElementById("f-inicio").value = 13;
+    document.getElementById("f-fin").value = 21;
+
+    function validar(t, acepta) {
+      const a = asistente(t.asistente), quien = a.nombre.split(" ")[0];
+      if (t.inicio >= t.fin) return "La hora de inicio debe ser anterior a la de fin.";
+      const choque = turnos.find(o => o.asistente === a.id && o.dia === t.dia && o.inicio < t.fin && t.inicio < o.fin);
+      if (choque) {
+        const lab = DATOS.laboratorios.find(l => l.id === choque.lab);
+        return `${quien} ya tiene turno en ${lab.nombre} (${lab.campus}) de ${hora(choque.inicio)} a ${hora(choque.fin)}. Elija otra franja u otro asistente.`;
+      }
+      const total = horasDe(a.id) + t.fin - t.inicio;
+      if (total > a.tope) return `Con este turno ${quien} tendría ${total} h y su tope semanal es ${a.tope} h. Le quedan ${Math.max(0, a.tope - horasDe(a.id))} h disponibles.`;
+      const disp = a.disponibilidad[t.dia];
+      const declarado = disp && disp[0] <= t.inicio && t.fin <= disp[1];
+      if (!declarado && !acepta) return `${quien} no declaró ese bloque como disponible. Marque la casilla solo si ya aceptó trabajarlo.`;
+      return null;
+    }
+
+    document.getElementById("form-asignar").addEventListener("submit", ev => {
+      ev.preventDefault();
+      const dia = +document.getElementById("f-dia").value;
+      const t = { lab: LAB, dia, inicio: +document.getElementById("f-inicio").value,
+        fin: +document.getElementById("f-fin").value, asistente: document.getElementById("f-asistente").value, estado: "cubierto" };
+      const error = validar(t, document.getElementById("f-acepta").checked);
+      const msg = document.getElementById("f-mensaje");
+      msg.classList.remove("oculto", "ok", "error");
+      if (error) { msg.classList.add("error"); msg.textContent = error; return; }
+      const hueco = turnos.findIndex(o => o.lab === LAB && o.estado === "sin-asignar" && o.dia === dia && o.inicio === t.inicio && o.fin === t.fin);
+      if (hueco >= 0) turnos.splice(hueco, 1);
+      turnos.push(t);
+      msg.classList.add("ok");
+      msg.textContent = `Turno asignado a ${asistente(t.asistente).nombre}: ${DATOS.dias[dia]} ${hora(t.inicio)}–${hora(t.fin)}.`;
+      pintarTodo();
+    });
+
+    function pintarTodo() { pintarCalendario(); pintarPendientes(); pintarAsistentes(); }
+    pintarTodo();
+  </script>
+</body>
+</html>

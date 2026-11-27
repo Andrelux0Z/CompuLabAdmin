@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Reservar máquina · CompuLabAdmin</title>
+  <link rel="stylesheet" href="estilos.css">
+  <style>
+    main { max-width: 560px; }
+    .paso { margin-bottom: 16px; }
+    .paso h2 { font-size: 15px; margin: 0 0 8px; }
+    .paso h2 span { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%;
+      background: var(--primario); color: #fff; font-size: 12px; margin-right: 6px; }
+    .chips { display: flex; gap: 8px; flex-wrap: wrap; }
+    .chip { border: 1px solid var(--borde); background: #fff; border-radius: 999px; padding: 8px 14px; font: inherit;
+      cursor: pointer; min-height: 44px; }
+    .chip[aria-pressed="true"] { background: var(--primario); color: #fff; border-color: var(--primario); }
+    .chip:disabled { color: var(--gris); background: var(--gris-suave); cursor: not-allowed; text-decoration: line-through; }
+    .maquinas { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+    .pc { border: 2px solid var(--borde); border-radius: 8px; background: #fff; padding: 8px 4px; font: inherit;
+      font-size: 13px; cursor: pointer; min-height: 56px; }
+    .pc small { display: block; font-size: 11px; color: var(--suave); }
+    .pc[aria-pressed="true"] { border-color: var(--primario); background: var(--primario-suave); }
+    .pc:disabled { cursor: not-allowed; background: var(--gris-suave); color: var(--gris); }
+    .pc.ocupada:disabled small { color: var(--error); }
+    .reglas { list-style: none; padding: 0; margin: 0; font-size: 14px; }
+    .reglas li { padding: 4px 0; }
+    .resumen { font-size: 14px; color: var(--suave); }
+  </style>
+</head>
+<body>
+  <header class="barra">
+    <a class="marca" href="index.html">CompuLabAdmin</a>
+    <nav><a href="horario.html">Horario</a><a href="reservar.html" aria-current="page">Reservar</a><a href="cierre.html">Cierre de mes</a></nav>
+    <span class="rol" id="rol"></span>
+  </header>
+  <main>
+    <h1>Reservar una máquina</h1>
+    <p class="sub">Solo se muestran los días y horas en que el laboratorio estará abierto.</p>
+
+    <section class="tarjeta paso">
+      <h2><span>1</span>Laboratorio</h2>
+      <select id="lab" aria-label="Laboratorio"></select>
+    </section>
+
+    <section class="tarjeta paso">
+      <h2><span>2</span>Día</h2>
+      <div class="chips" id="dias" role="group" aria-label="Día"></div>
+    </section>
+
+    <section class="tarjeta paso">
+      <h2><span>3</span>Hora y duración</h2>
+      <div class="chips" id="inicios" role="group" aria-label="Hora de inicio"></div>
+      <label for="duracion">Duración (máximo 2 h)</label>
+      <select id="duracion"><option value="1">1 hora</option><option value="1.5">1 h 30 min</option><option value="2" selected>2 horas</option></select>
+      <p class="resumen" id="abierto"></p>
+    </section>
+
+    <section class="tarjeta paso">
+      <h2><span>4</span>Máquina</h2>
+      <div class="leyenda">
+        <span class="estado ok">● Libre</span><span class="estado error">✕ Ocupada</span><span class="estado fuera">⚠ Fuera de servicio</span>
+      </div>
+      <div class="maquinas" id="maquinas" role="group" aria-label="Máquinas"></div>
+    </section>
+
+    <section class="tarjeta paso">
+      <h2><span>5</span>Confirmar</h2>
+      <ul class="reglas" id="reglas"></ul>
+      <div id="mensaje" class="mensaje oculto" role="status" aria-live="polite"></div>
+      <button class="boton" id="confirmar" style="width:100%;margin-top:12px" disabled>Reservar</button>
+    </section>
+  </main>
+  <script src="datos.js"></script>
+  <script>
+    const est = { ...DATOS.estudiante };
+    const sel = { lab: "LAB1", dia: null, inicio: null, maquina: null };
+    const reservas = DATOS.reservas.map(r => ({ ...r }));
+    document.getElementById("rol").textContent = `Estudiante · ${est.nombre}`;
+
+    const $ = id => document.getElementById(id);
+    $("lab").innerHTML = DATOS.laboratorios.map(l => `<option value="${l.id}">${l.nombre} · ${l.campus}</option>`).join("");
+
+    // El laboratorio está abierto donde hay un turno asignado (cubierto u ofrecido).
+    const turnosAbiertos = dia => DATOS.turnos.filter(t => t.lab === sel.lab && t.dia === dia && t.asistente &&
+      ["cubierto", "ofrecido"].includes(t.estado));
+    const abiertoEn = (dia, ini, fin) => {
+      // une turnos contiguos y verifica que cubran [ini, fin)
+      let cursor = ini;
+      for (const t of turnosAbiertos(dia).sort((a, b) => a.inicio - b.inicio))
+        if (t.inicio <= cursor && t.fin > cursor) cursor = t.fin;
+      return cursor >= fin;
+    };
+    const duracion = () => +$("duracion").value;
+
+    function pintarDias() {
+      $("dias").innerHTML = DATOS.dias.map((d, i) => {
+        const abierto = turnosAbiertos(i).length > 0 && i >= 1; // lunes ya pasó
+        return `<button class="chip" data-dia="${i}" aria-pressed="${sel.dia === i}" ${abierto ? "" : "disabled"}
+          title="${abierto ? "" : "Laboratorio cerrado"}">${d}</button>`;
+      }).join("");
+    }
+
+    function pintarInicios() {
+      if (sel.dia === null) { $("inicios").innerHTML = `<span class="resumen">Elija un día primero.</span>`; $("abierto").textContent = ""; return; }
+      const posibles = [];
+      for (let h = 7; h < 21; h += 0.5) if (abiertoEn(sel.dia, h, h + duracion())) posibles.push(h);
+      if (!posibles.includes(sel.inicio)) sel.inicio = null;
+      $("inicios").innerHTML = posibles.map(h =>
+        `<button class="chip" data-inicio="${h}" aria-pressed="${sel.inicio === h}">${hora(h)}</button>`).join("")
+        || `<span class="resumen">No hay franjas abiertas de esa duración.</span>`;
+      $("abierto").textContent = "Abierto: " + turnosAbiertos(sel.dia).map(t => `${hora(t.inicio)}–${hora(t.fin)}`).join(", ");
+    }
+
+    function pintarMaquinas() {
+      const lista = DATOS.maquinas[sel.lab] || [];
+      if (!lista.length) { $("maquinas").innerHTML = `<span class="resumen">Sin datos de demostración para este laboratorio.</span>`; return; }
+      $("maquinas").innerHTML = lista.map(m => {
+        const fin = sel.inicio + duracion();
+        const ocupada = sel.inicio !== null && reservas.some(r => r.maquina === m.id && r.dia === sel.dia && r.inicio < fin && sel.inicio < r.fin);
+        const estado = !m.enServicio ? ["fuera", "Fuera de servicio"] : ocupada ? ["ocupada", "Ocupada"] : ["libre", "Libre"];
+        const deshabilitada = sel.inicio === null || estado[0] !== "libre";
+        if (deshabilitada && sel.maquina === m.id) sel.maquina = null;
+        return `<button class="pc ${estado[0]}" data-maquina="${m.id}" aria-pressed="${sel.maquina === m.id}" ${deshabilitada ? "disabled" : ""}>
+          ${m.id}<small>${estado[0] === "fuera" ? "⚠ " : estado[0] === "ocupada" ? "✕ " : "● "}${estado[1]}</small></button>`;
+      }).join("");
+    }
+
+    function pintarReglas() {
+      const d = duracion(), total = est.horasSemana + d;
+      const reglas = [
+        [d <= 2, `Duración ${d} h (máximo 2 h)`],
+        [!est.reservaActiva, est.reservaActiva ? `Ya tiene una reserva activa: ${est.reservaActiva}` : "Sin otra reserva activa"],
+        [total <= 6, `Horas esta semana: ${est.horasSemana} + ${d} = ${total} de 6 h`],
+      ];
+      $("reglas").innerHTML = reglas.map(([ok, t]) => `<li>${ok ? "✓" : "✕"} ${t}</li>`).join("");
+      const listo = sel.dia !== null && sel.inicio !== null && sel.maquina && reglas.every(r => r[0]);
+      $("confirmar").disabled = !listo;
+      return reglas.find(r => !r[0]);
+    }
+
+    function pintarTodo() { pintarDias(); pintarInicios(); pintarMaquinas(); pintarReglas(); }
+
+    $("lab").addEventListener("change", e => { Object.assign(sel, { lab: e.target.value, dia: null, inicio: null, maquina: null }); pintarTodo(); });
+    $("duracion").addEventListener("change", pintarTodo);
+    document.addEventListener("click", e => {
+      const b = e.target.closest("button");
+      if (!b || b.disabled) return;
+      if (b.dataset.dia) { sel.dia = +b.dataset.dia; sel.inicio = null; sel.maquina = null; }
+      else if (b.dataset.inicio) { sel.inicio = +b.dataset.inicio; sel.maquina = null; }
+      else if (b.dataset.maquina) { sel.maquina = b.dataset.maquina; }
+      else return;
+      $("mensaje").classList.add("oculto");
+      pintarTodo();
+    });
+
+    $("confirmar").addEventListener("click", () => {
+      const fallo = pintarReglas();
+      const msg = $("mensaje");
+      msg.classList.remove("oculto", "ok", "error");
+      if (fallo) { msg.classList.add("error"); msg.textContent = fallo[1]; return; }
+      const fin = sel.inicio + duracion();
+      reservas.push({ maquina: sel.maquina, dia: sel.dia, inicio: sel.inicio, fin });
+      est.horasSemana += duracion();
+      est.reservaActiva = `${sel.maquina}, ${DATOS.dias[sel.dia]} ${hora(sel.inicio)}–${hora(fin)}`;
+      msg.classList.add("ok");
+      msg.textContent = `Reservada ${est.reservaActiva}. Si no llega antes de las ${hora(sel.inicio + 0.25)}, la máquina se libera.`;
+      sel.maquina = null;
+      pintarMaquinas(); pintarReglas();
+    });
+
+    pintarTodo();
+  </script>
+</body>
+</html>

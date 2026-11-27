@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CompuLabAdmin</title>
+  <link rel="stylesheet" href="estilos.css">
+  <style>
+    .menu { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+    .menu a { text-decoration: none; color: inherit; }
+    .menu .tarjeta:hover { border-color: var(--primario); }
+    .menu h2 { font-size: 17px; margin: 0 0 6px; }
+    .menu p { margin: 0; color: var(--suave); }
+  </style>
+</head>
+<body>
+  <header class="barra"><a class="marca" href="index.html">CompuLabAdmin</a></header>
+  <main>
+    <h1>Pantallas de demostración</h1>
+    <p class="sub">Datos fijos; no se conectan a la base de datos.</p>
+    <div class="menu">
+      <a href="horario.html"><div class="tarjeta"><h2>Horario semanal</h2><p>Coordinador de laboratorio: arma turnos con las reglas validadas en vivo.</p></div></a>
+      <a href="reservar.html"><div class="tarjeta"><h2>Reservar máquina</h2><p>Estudiante, en el celular: solo franjas abiertas y máquinas libres.</p></div></a>
+      <a href="cierre.html"><div class="tarjeta"><h2>Cierre de mes</h2><p>Coordinador de soporte: pago por asistente, horas sin pagar y archivo para Becas.</p></div></a>
+    </div>
+  </main>
+</body>
+</html>
