@@ -10,6 +10,7 @@ from compulab.dominio.horario.excepciones import (
     TurnoInvalido,
     TurnoTraslapado,
 )
+from compulab.dominio.horario.turno import EstadoTurno, Turno
 
 __all__ = [
     "Asistente",
@@ -18,8 +19,10 @@ __all__ = [
     "BloqueDisponible",
     "BloqueNoDisponible",
     "EstadoAsistente",
+    "EstadoTurno",
     "LaboratorioNoAutorizado",
     "TopeSemanalExcedido",
+    "Turno",
     "TurnoInvalido",
     "TurnoTraslapado",
 ]
