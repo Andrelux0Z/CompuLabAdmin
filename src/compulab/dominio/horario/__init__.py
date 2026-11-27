@@ -11,6 +11,11 @@ from compulab.dominio.horario.excepciones import (
     TurnoInvalido,
     TurnoTraslapado,
 )
+from compulab.dominio.horario.puertos import (
+    ConsultaAsistentes,
+    ConsultaCoordinaciones,
+    RepositorioTurnos,
+)
 from compulab.dominio.horario.reglas import (
     REGLAS_DE_ASIGNACION,
     AsistenteActivo,
@@ -29,6 +34,8 @@ __all__ = [
     "AsistenteInvalido",
     "BloqueDisponible",
     "BloqueNoDisponible",
+    "ConsultaAsistentes",
+    "ConsultaCoordinaciones",
     "DentroDeDisponibilidad",
     "DentroDelTope",
     "EstadoAsistente",
@@ -36,6 +43,7 @@ __all__ = [
     "LaboratorioNoAutorizado",
     "REGLAS_DE_ASIGNACION",
     "ReglaTurno",
+    "RepositorioTurnos",
     "SinTraslape",
     "TopeSemanalExcedido",
     "Turno",
