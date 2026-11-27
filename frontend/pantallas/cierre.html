@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cierre de mes · CompuLabAdmin</title>
+  <link rel="stylesheet" href="estilos.css">
+  <style>
+    .cifras { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 16px; }
+    .cifra .valor { font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .cifra .nombre { color: var(--suave); font-size: 13px; }
+    .encabezado { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+    .tabla { overflow-x: auto; }
+    tfoot td { font-weight: 700; border-bottom: 0; }
+    h2 { font-size: 16px; margin: 0 0 10px; }
+    .constancia { font-size: 14px; padding: 8px 0; border-bottom: 1px solid var(--borde); }
+    .constancia small { color: var(--suave); display: block; }
+  </style>
+</head>
+<body>
+  <header class="barra">
+    <a class="marca" href="index.html">CompuLabAdmin</a>
+    <nav><a href="horario.html">Horario</a><a href="reservar.html">Reservar</a><a href="cierre.html" aria-current="page">Cierre de mes</a></nav>
+    <span class="rol">Coordinador de soporte</span>
+  </header>
+  <main>
+    <div class="encabezado">
+      <div>
+        <h1 id="titulo"></h1>
+        <p class="sub" id="cerrado"></p>
+      </div>
+      <button class="boton" id="descargar">Descargar archivo para Becas (CSV)</button>
+    </div>
+
+    <div class="cifras" id="cifras"></div>
+    <div id="alerta" class="mensaje aviso oculto" role="alert" style="margin:0 0 16px"></div>
+
+    <section class="tarjeta tabla" aria-labelledby="t-detalle">
+      <h2 id="t-detalle">Pago por asistente</h2>
+      <table>
+        <thead><tr>
+          <th>Asistente</th><th>Cat.</th><th class="num">Horas normales</th><th class="num">Horas con recargo</th>
+          <th class="num">Horas sobre el tope</th><th class="num">Monto</th>
+        </tr></thead>
+        <tbody id="filas"></tbody>
+        <tfoot id="totales"></tfoot>
+      </table>
+      <p class="sub" id="parametros" style="margin:12px 0 0;font-size:13px"></p>
+    </section>
+
+    <section class="tarjeta" style="margin-top:16px" aria-labelledby="t-const">
+      <h2 id="t-const">Constancias</h2>
+      <p class="sub" style="font-size:13px">Un mes cerrado no se recalcula. Las correcciones se hacen por fuera y se dejan anotadas aquí.</p>
+      <div id="constancias"></div>
+    </section>
+  </main>
+  <script src="datos.js"></script>
+  <script>
+    const c = DATOS.cierre;
+    const $ = id => document.getElementById(id);
+    // Monto = normales × tarifa + recargo × tarifa × (1 + recargo). Las horas sobre el tope no se pagan.
+    const lineas = c.lineas.map(l => {
+      const tarifa = c.tarifas[l.categoria];
+      return { ...l, tarifa, monto: l.normales * tarifa + l.recargo * tarifa * (1 + c.recargo) };
+    });
+    const suma = k => lineas.reduce((s, l) => s + l[k], 0);
+
+    $("titulo").textContent = `Cierre de ${c.etiqueta}`;
+    $("cerrado").innerHTML = `<span class="estado ok">✓ Cerrado</span> el ${c.cerradoEn}`;
+    $("cifras").innerHTML = [
+      ["Total a pagar", colones(suma("monto"))],
+      ["Asistentes", lineas.length],
+      ["Horas pagadas", suma("normales") + suma("recargo")],
+      ["Horas sin pagar (sobre tope)", suma("sobreTope")],
+    ].map(([n, v]) => `<div class="tarjeta cifra"><div class="nombre">${n}</div><div class="valor">${v}</div></div>`).join("");
+
+    const conExceso = lineas.filter(l => l.sobreTope > 0);
+    if (conExceso.length) {
+      $("alerta").classList.remove("oculto");
+      $("alerta").textContent = "⚠ " + conExceso.map(l => `${l.nombre} trabajó ${l.sobreTope} h por encima de su tope semanal`).join("; ")
+        + ". Esas horas quedaron registradas y no se pagan.";
+    }
+
+    $("filas").innerHTML = lineas.map(l => `<tr>
+      <td>${l.nombre}</td><td>${l.categoria}</td>
+      <td class="num">${l.normales}</td><td class="num">${l.recargo}</td>
+      <td class="num">${l.sobreTope ? `<span class="estado aviso">⚠ ${l.sobreTope}</span>` : "0"}</td>
+      <td class="num">${colones(l.monto)}</td></tr>`).join("");
+    $("totales").innerHTML = `<tr><td colspan="2">Total</td><td class="num">${suma("normales")}</td><td class="num">${suma("recargo")}</td>
+      <td class="num">${suma("sobreTope")}</td><td class="num">${colones(suma("monto"))}</td></tr>`;
+    $("parametros").textContent = `Tarifas usadas: A ${colones(c.tarifas.A)}/h, B ${colones(c.tarifas.B)}/h. `
+      + `Recargo ${c.recargo * 100} % para turnos que empiezan a las 18:00 o después y fines de semana.`;
+
+    $("constancias").innerHTML = c.constancias.map(k =>
+      `<div class="constancia">${k.texto}<small>${k.fecha} · ${k.autor}</small></div>`).join("")
+      || `<p class="sub">Sin constancias.</p>`;
+
+    // Mismo formato que ExportadorCsvBecas (src/compulab/infraestructura/exportador_csv_becas.py)
+    $("descargar").addEventListener("click", () => {
+      const dos = n => n.toFixed(2);
+      const filas = [["anio", "mes", "asistente_id", "horas_normales", "horas_con_recargo", "horas_sobre_tope", "monto"]]
+        .concat([...lineas].sort((a, b) => a.id.localeCompare(b.id)).map(l =>
+          [c.anio, c.mes, l.id, dos(l.normales), dos(l.recargo), dos(l.sobreTope), dos(l.monto)]));
+      const blob = new Blob([filas.map(f => f.join(",")).join("\n") + "\n"], { type: "text/csv;charset=utf-8" });
+      const a = Object.assign(document.createElement("a"), {
+        href: URL.createObjectURL(blob), download: `becas_${c.anio}_${String(c.mes).padStart(2, "0")}.csv` });
+      a.click(); URL.revokeObjectURL(a.href);
+    });
+  </script>
+</body>
+</html>
