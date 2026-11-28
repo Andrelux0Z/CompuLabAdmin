@@ -1,1 +1,0 @@
-Frontend de CompuLabAdmin (React + TypeScript + Vite).
