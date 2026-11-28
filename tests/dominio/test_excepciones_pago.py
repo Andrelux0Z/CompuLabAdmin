@@ -9,6 +9,7 @@ from compulab.dominio.pagos import (
     MarcaInvalida,
     MesNoTerminado,
     MesYaCerrado,
+    TarifaInvalida,
     TarifaNoConfigurada,
 )
 
@@ -18,6 +19,7 @@ EXCEPCIONES_DEL_PAGO = [
     MarcaInvalida,
     MesNoTerminado,
     MesYaCerrado,
+    TarifaInvalida,
     TarifaNoConfigurada,
 ]
 
@@ -34,4 +36,4 @@ def test_se_atrapan_como_error_de_dominio(excepcion):
 
 
 def test_son_excepciones_distintas():
-    assert len(set(EXCEPCIONES_DEL_PAGO)) == 6
+    assert len(set(EXCEPCIONES_DEL_PAGO)) == 7

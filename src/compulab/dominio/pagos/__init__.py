@@ -6,8 +6,10 @@ from compulab.dominio.pagos.excepciones import (
     MarcaInvalida,
     MesNoTerminado,
     MesYaCerrado,
+    TarifaInvalida,
     TarifaNoConfigurada,
 )
+from compulab.dominio.pagos.tarifas import Recargo, Tarifa, linea_de_pago
 from compulab.dominio.pagos.tipos import LineaPago, MarcaTrabajada
 
 __all__ = [
@@ -18,5 +20,9 @@ __all__ = [
     "MarcaTrabajada",
     "MesNoTerminado",
     "MesYaCerrado",
+    "Recargo",
+    "Tarifa",
+    "TarifaInvalida",
     "TarifaNoConfigurada",
+    "linea_de_pago",
 ]

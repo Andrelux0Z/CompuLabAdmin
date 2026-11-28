@@ -23,5 +23,9 @@ class MesNoTerminado(ErrorDeDominio):
     """Se pidió cerrar un mes que todavía no ha terminado."""
 
 
+class TarifaInvalida(ErrorDeDominio):
+    """La tarifa no es mayor que 0, no tiene categoría o el recargo es negativo."""
+
+
 class TarifaNoConfigurada(ErrorDeDominio):
     """No hay tarifa o recargo vigente para la categoría y la fecha pedidas."""

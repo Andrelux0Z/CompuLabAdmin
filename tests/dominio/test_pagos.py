@@ -25,7 +25,8 @@ def test_marca_trabajada_guarda_sus_datos_y_es_inmutable():
 
 
 def test_linea_pago_guarda_montos_en_decimal_y_es_inmutable():
-    linea = LineaPago("A-1", Decimal("18"), Decimal("2"), Decimal("1"), Decimal("45000.00"))
+    linea = LineaPago("A-1", Decimal("18"), Decimal("2"), Decimal("1"), Decimal("45000.00"),
+                      Decimal("2500"), Decimal("50"))
     assert linea.monto == Decimal("45000.00")
     with pytest.raises(FrozenInstanceError):
         linea.monto = Decimal("0")  # type: ignore[misc]

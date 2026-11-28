@@ -7,8 +7,10 @@ from compulab.dominio.pagos import LineaPago
 from compulab.infraestructura.exportador_csv_becas import COLUMNAS, ExportadorCsvBecas
 
 LINEAS = [
-    LineaPago("A2", Decimal("10"), Decimal("4.5"), Decimal("0"), Decimal("33187.5")),
-    LineaPago("A1", Decimal("12.25"), Decimal("0"), Decimal("2"), Decimal("24500.004")),
+    LineaPago("A2", Decimal("10"), Decimal("4.5"), Decimal("0"), Decimal("33187.5"),
+              Decimal("2500"), Decimal("50")),
+    LineaPago("A1", Decimal("12.25"), Decimal("0"), Decimal("2"), Decimal("24500.004"),
+              Decimal("2000"), Decimal("50")),
 ]
 
 
